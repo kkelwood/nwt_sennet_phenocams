@@ -1,0 +1,215 @@
+---
+title: "Phenopix Workflow"
+author: "Kelsey Elwood"
+date: "25 Jan 2019"
+output: html_document
+---
+
+```{r libraries}
+library(phenopix) # for image and greenness processing
+library(lubridate) # for managing dates
+```
+
+```{r DEFINE!!!_variables}
+camera_number <- "01_2018"
+orig_image_top_directory <- "/Volumes/SeagateBackupPlusDriveELWOOD/nwt_research/nwt_sennet_phenocams/camera_imagery/all_images/⁩" # Not specific to any camera
+subset_image_top_directory <- "/Volumes/SeagateBackupPlusDriveELWOOD/nwt_research/nwt_sennet_phenocams/camera_imagery/subset9to1/" # Not specific to any camera
+subset_image_camera_dir <- paste0(subset_image_top_directory, camera_number)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE,
+                      fig.path = subset_image_camera_dir,
+                      fig.align = 'center')
+knitr::opts_knit$set(root.dir = subset_image_camera_dir) # set root directory (for knitting purposes)
+par(mfrow = c(1,1))
+```
+
+```{r set-time-zone}
+Sys.setenv(TZ = "Pacific/Honolulu")
+Sys.getenv("TZ")
+
+```
+
+```{r load-functions}
+# Load required functions
+source("functions/subset_and_copy_function.R")
+
+```
+
+# Subset and copy images to image folder
+
+```{r subset-and-copy, eval = FALSE}
+# Run `subset.by.time.of.day` function to copy to new location for the `camera_number`
+subset.by.time.of.day(from.path = orig_image_top_directory,
+                       to.path = subset_image_top_directory, 
+                       camera.number = camera_number, 
+                       image.ext = ".JPG", 
+                       start.of.day = 9, 
+                       end.of.day = 13)
+
+```
+
+```{r clean-data_remove-duplicate-images}
+# Clean up data by removing all duplicate images. Duplicate images are indicated with a "(1)" after the name.
+
+# Create list of all files
+all_images_list <- list.files(path = subset_image_camera_dir,
+                              pattern = ".JPG", 
+                              recursive = TRUE, # Dig into sub-directories
+                              full.names = TRUE)
+
+# remove files that are duplicates (i.e., contain "(1)" in the file name)
+filelist_deleted <- as.list(c())
+start_length <- length(all_images_list)
+for(i in all_images_list){
+    QAcheck <- grepl("1).JPG", i) # check that there are not duplicates (indicated by the pattern: "1).JPG"). Note that I did not include the front parenthesis because that seemed to confuse the code and did not work.
+    if(QAcheck == TRUE){ # if the name includes "(1)"...
+    filelist_to_delete <- c(filelist_deleted, i)
+    file.remove(i) # delete file from directory
+    print(paste("The file", i, "has been deleted."))
+    }
+}
+all_images_list <- list.files(path = subset_image_camera_dir,
+                              pattern = ".JPG", 
+                              recursive = TRUE, # Dig into sub-directories
+                              full.names = TRUE)
+end_length <- length(all_images_list)
+images_deleted <- start_length - end_length
+images_deleted
+```
+
+# Determine the ROI(s)
+Is there more than one camera frame of view?
+
+```{r DEFINE!!!-dates-of-each-fov}
+# DEFINE Frame of View (FOV)
+number_of_FOVs <- 4
+FOV1_start <- as.POSIXct("2017_06_01_0913", format = "%Y_%m_%d_%H%M")
+FOV2_start <- as.POSIXct("2017_06_26_1113", format = "%Y_%m_%d_%H%M")
+FOV3_start <- as.POSIXct("2017_06_28_0913", format = "%Y_%m_%d_%H%M")
+FOV4_start <- as.POSIXct("2017_07_04_0920", format = "%Y_%m_%d_%H%M")
+
+# Create list of all image files in subsetted directory
+all_images_list <- list.files(path = paste0(subset_image_camera_dir, "/IMG"),
+                              pattern = ".JPG", 
+                              recursive = TRUE, 
+                              full.names = FALSE)
+# check for contents of list
+head(all_images_list)
+
+
+
+# Create list of integers for total number of FOVs
+FOV_list <- 1:number_of_FOVs
+
+# Create folders for each FOV
+for(i in FOV_list){
+check_create_dir(dir_path = paste0(subset_image_camera_dir, "/FOV", i))
+    structureFolder(path = paste0(subset_image_camera_dir, "/FOV", i, "/"),
+                showWarnings = FALSE)
+}
+
+# Copy to new FOV folders
+## FOV 1
+for(i in all_images_list){
+    date_temp <- extractDateFilename(i, date.code = "yyyy_mm_dd_HHMM")
+    if(date_temp >= FOV1_start & date_temp < FOV2_start){
+        file.copy(from = paste0(subset_image_camera_dir, "/IMG/", i),
+                  to = paste0(subset_image_camera_dir, "/FOV1", "/IMG/", i))
+    }
+}
+
+## FOV 2
+for(i in all_images_list){
+    date_temp <- extractDateFilename(i, date.code = "yyyy_mm_dd_HHMM")
+    if(date_temp >= FOV2_start & date_temp < FOV3_start){
+        file.copy(from = paste0(subset_image_camera_dir, "/IMG/", i),
+                  to = paste0(subset_image_camera_dir, "/FOV2", "/IMG/", i))
+    }
+} 
+ 
+## FOV 3
+for(i in all_images_list){
+    date_temp <- extractDateFilename(i, date.code = "yyyy_mm_dd_HHMM")
+    if(date_temp >= FOV3_start & date_temp < FOV4_start){
+        file.copy(from = paste0(subset_image_camera_dir, "/IMG/", i),
+                  to = paste0(subset_image_camera_dir, "/FOV3", "/IMG/", i))
+    }
+} 
+ 
+## FOV 4
+for(i in all_images_list){
+    date_temp <- extractDateFilename(i, date.code = "yyyy_mm_dd_HHMM")
+    if(date_temp >= FOV4_start){
+        file.copy(from = paste0(subset_image_camera_dir, "/IMG/", i),
+                  to = paste0(subset_image_camera_dir, "/FOV4", "/IMG/", i))
+    }
+} 
+ 
+```
+
+
+# Draw ROI
+First, manually copy the preferred reference image into the REF folder in the appropriate FOV directory
+
+```{r create-FOV-objects}
+# For loop to DrawROI objects
+for(i in FOV_list){
+    FOV_dir <- paste0(subset_image_camera_dir, "/FOV", i)
+    ref_image <- list.files(path = paste0(FOV_dir, "/REF"),
+                         full.names = TRUE)
+    DrawROI(path_img_ref = ref_image, # the file path of your reference image
+            path_ROIs = paste0(FOV_dir, "/ROI/"), # the path in your computer where to store RData with ROI properties
+            nroi = 1, # number of ROIs (for two ROIs, you can use concatenate)
+            roi.names = paste0("roi_", camera_number, ".", i), # list of ROI names (in order)
+            file.type = ".jpg") 
+    print(paste("The ROI for FOV", i, "has been recorded."))
+}
+```
+
+```{r}
+# Check ROIs
+for(i in FOV_list){
+    FOV_dir <- paste0(subset_image_camera_dir, "/FOV", i)
+    ref_image <- list.files(path = paste0(FOV_dir, "/REF"),
+                         full.names = TRUE)
+    PrintROI(path_img_ref = ref_image,
+             path_ROIs = paste0(FOV_dir, "/ROI/"),
+             which = 'all',
+             col = "white")
+}    
+
+```
+
+
+# Extract VIs
+
+```{r}
+# Extract VIs for all FOVs
+FOV_list <- c(2,3,4)
+for(i in FOV_list){
+   FOV_dir <- paste0(subset_image_camera_dir, "/FOV", i) 
+   fov_vi_start <- Sys.time()
+   extractVIs(img.path = paste0(FOV_dir, "/IMG/"), 
+           roi.path = paste0(FOV_dir, "/ROI/"), 
+           vi.path = paste0(FOV_dir, "/VI/"), 
+           roi.name = paste0("roi_", camera_number, ".", i), 
+           plot = TRUE, # return a plot with R, G, and B indexes
+           spatial = FALSE, # VI is averaged over the entire ROI (and not for each pixel individually)
+           date.code = "yyyy_mm_dd_HHMM", # WSN date code structure embedded in file names
+           npixels = 1,
+           file.type = ".JPG", 
+           begin = NULL,
+           bind = FALSE, 
+           log.file = paste0(FOV_dir, "/VI/"))
+   fov_vi_end <- Sys.time()
+   fov_vi_time <- fov_vi_end - fov_vi_start
+   print(paste("The VI for FOV", i, "is complete."))
+   fov_vi_time
+}
+    
+```
+
