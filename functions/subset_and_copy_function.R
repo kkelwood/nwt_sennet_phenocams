@@ -17,10 +17,10 @@ subset.by.time.of.day <- function(from.path, # the directory to extract the imag
                                   start.of.day, # the number of the hour to start daily subset (1 or 2 digits in 24-hour clock: e.g. 4 or 20)
                                   end.of.day) {
 
-# Create list of all files (images, .JPG) in the RawFieldData folder
-image_filelist <- list.files(path = paste0(from.path, camera.number), # get the files from within the "from.path/camera.number" folder
+# Create list of all files (images, .JPG) for the camera number
+image_filelist <- list.files(path = from.path, # get the files from within the "from.path/camera.number" folder
                              recursive = TRUE, # extract all files within subfolders of main path
-                             pattern= image.ext, # only look for files ending in the options of `image.ext`
+                             pattern = image.ext, # only look for files ending in the options of `image.ext`
                              full.names = FALSE)
 
 # Create blank list that will hold the subsetted portion of the day: 
@@ -43,19 +43,15 @@ for(i in image_filelist) { # for all files in wsn file list
     }
 }
 
-check_create_dir(dir_path = paste0(to.path, camera.number))
+check_create_dir(dir_path = paste0(to.path, "/IMG_full_season/"))
 
-# Create recommended subfolders (according to `phenopix`) in the computation folder
-structureFolder(path = paste0(to.path, camera.number),
-                showWarnings = FALSE)
-
-# Copy files from "hour9to13" list to new location:
+# Copy files from `filelist_daily_subset` list to new location:
 
 for(i in filelist_daily_subset) {
-    temp.to <- paste0(to.path, camera.number, "/IMG")
-    temp.from <- paste(from.path, camera.number, "/", i, sep="")
-    file.copy(temp.from, temp.to)
-}
+    temp.to <- paste0(to.path, "/IMG_full_season")
+    temp.from <- paste(from.path, "/", i, sep="")
+    file.copy(temp.from, temp.to)    
+    }
 }
 
 #### Subset by DATE
