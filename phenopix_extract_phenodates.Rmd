@@ -1,0 +1,190 @@
+---
+title: "Extract Phenodates"
+author: "Kelsey Elwood"
+date: "3/15/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(phenopix)
+library(dplyr)
+library(zoo)
+```
+
+```{r}
+YEAR <- "2018"
+snow_on_doys <- c(279:356) # For 2018
+# snow_on_doys <- c(259, 267:272, 274:278, 280, 282:286, 294:295, 300:301, 305, 308:356) # For 2017 data
+snow_on_doys <- c(259:356, 169:184) # For WSN 14 in 2017 (GCC is artifically higher for an early FOVs)
+snow_on_doys <- c(259:356) # For WSN 09 in 2017 (Fit was better without the extra days at the end of the season)
+snow_on_doys_chr <- "259:356"
+
+
+phenopix_top_directory <- paste0("/Volumes/SeagateBackupPlusDriveELWOOD/nwt_research/nwt_sennet_phenocams/phenopix_output/", YEAR) # Not specific to any camera
+```
+
+
+```{r}
+# Create list of all filtered csv files
+filtered_dfs <- list.files(path = paste0(phenopix_top_directory),
+           pattern = "_filtered.csv",
+           recursive = TRUE,
+           full.names = TRUE)
+
+# For 2018:
+filtered_dfs <- filtered_dfs[2:length(filtered_dfs)]
+fit_gu <- c("08", "10", "15", "19") # In 2018 only
+fit_elmore <- c("09") # In 2017 only
+filtered_dfs_gu <- c(filtered_dfs[3], filtered_dfs[5], filtered_dfs[10], filtered_dfs[13])
+filtered_dfs_klos <- filtered_dfs[which(!filtered_dfs %in% filtered_dfs_gu)]
+```
+
+```{r for_klosterman_phenodates}
+# i <- filtered_dfs_gu[1]
+# j <- "derivatives"
+
+threshold_list <- c("derivatives", "trs")
+fit <- "gu"
+
+for(i in filtered_dfs_gu){
+    phenocam <- substr(i, 109, 110) # Get the 109th-110th characters
+    year <- YEAR
+    temp_df <- read.csv(i) %>% 
+        filter(!doy %in% snow_on_doys)
+    temp_zoo <- read.zoo(temp_df, index.column = "date", tz = "America/Denver")
+    # Calculate uncertainty for fits and phenodates
+    for(j in threshold_list) {
+        reps <- 100
+        fit_complete <- greenProcess(ts = temp_zoo$max.filtered, 
+                                 fit = "gu", 
+                                 threshold = "klosterman", 
+                                 plot = TRUE, 
+                                 uncert = TRUE, 
+                                 nrep = reps)  
+        png(filename = paste0("/Volumes/SeagateBackupPlusDriveELWOOD/nwt_research/nwt_sennet_phenocams/phenopix_output/curve-and-phenophase-fits/", fit, "_fit_", phenocam, "_", year),
+            width = 2000, height = 2400,
+            units = "px",
+            pointsize = 48,
+            bg = "white")
+    PhenoPlot(fit_complete$fit, fit_complete$metrics)
+    dev.off()
+        # Dataframe of phenophase date outputs with envelopes
+        phenophase <- fit_complete$metrics
+        
+        # Add columns to phenophase dataframe
+        phenophase$phenocam <- phenocam
+        phenophase$year <- YEAR
+        phenophase$fit <- j
+        phenophase$threshold = "klosterman"
+        phenophase$nreps <- reps
+        phenophase$days_excluded <- paste(snow_on_doys_chr)
+        # Change row names to an official column
+        phenophase$uncertainty_envelope <- rownames(phenophase)
+        rownames(phenophase) <- c()
+        if(exists("phenophase_df")) {phenophase_df <<- rbind(phenophase_df, phenophase)}
+        if(!exists("phenophase_df")) {phenophase_df <<- phenophase}
+    }
+    print(paste0("Finished processing phenocam ", phenocam))
+}
+
+for(i in filtered_dfs){
+    phenocam <- substr(i, 109, 110)
+    year <- YEAR
+    temp_df <- read.csv(i) %>% 
+        filter(!doy %in% snow_on_doys)
+    temp_zoo <- read.zoo(temp_df, index.column = "date", tz = "America/Denver")
+    explored <- greenExplore(temp_zoo$max.filtered)
+    plotExplore(explored)
+    figure_name <- paste0("plotExplore4_", phenocam, "_", year, ".png")
+    output_folder <- "/Volumes/SeagateBackupPlusDriveELWOOD/nwt_research/nwt_sennet_phenocams/phenopix_output/curve-and-phenophase-fits/"
+    png(filename = paste0(output_folder, figure_name),
+        width = 2000, height = 2400,
+        units = "px",
+        pointsize = 48,
+        bg = "white")
+    plotExplore(explored)
+    # dev.copy(jpg, paste0("/phenopix_output/curve-and-phenophase-fits/", figure_name))
+    dev.off()
+}
+
+# Save combined file
+    write.csv(phenophase_df, 
+              file = paste0("phenopix_output/phenophase_nosnow.csv"),
+              row.names = FALSE)
+
+```
+
+
+```{r trs_and_derivative phenodates}
+for(i in filtered_dfs_gu){
+    phenocam <- substr(i, 109, 110) # Get the 109th-110th characters
+    year <- YEAR
+    temp_df <- read.csv(i) %>% 
+        filter(!doy %in% snow_on_doys)
+    temp_zoo <- read.zoo(temp_df, index.column = "date", tz = "America/Denver")
+    # Calculate uncertainty for fits and phenodates
+    for(j in threshold_list) {
+        reps <- 100
+        fit_complete <- greenProcess(ts = temp_zoo$max.filtered, 
+                                 fit = "gu", 
+                                 threshold = j, 
+                                 plot = TRUE, 
+                                 uncert = TRUE, 
+                                 nrep = reps)  
+        png(filename = paste0("/Volumes/SeagateBackupPlusDriveELWOOD/nwt_research/nwt_sennet_phenocams/phenopix_output/curve-and-phenophase-fits/", fit, "_fit_", phenocam, "_", year),
+            width = 2000, height = 2400,
+            units = "px",
+            pointsize = 48,
+            bg = "white")
+    PhenoPlot(fit_complete$fit, fit_complete$metrics)
+    dev.off()
+        # Dataframe of phenophase date outputs with envelopes
+        phenophase <- fit_complete$metrics
+        
+        # Add columns to phenophase dataframe
+        phenophase$phenocam <- phenocam
+        phenophase$year <- YEAR
+        phenophase$fit <- j
+        phenophase$threshold = "klosterman"
+        phenophase$nreps <- reps
+        phenophase$days_excluded <- paste(snow_on_doys_chr)
+        # Change row names to an official column
+        phenophase$uncertainty_envelope <- rownames(phenophase)
+        rownames(phenophase) <- c()
+        if(exists("phenophase_df")) {phenophase_df <<- rbind(phenophase_df, phenophase)}
+        if(!exists("phenophase_df")) {phenophase_df <<- phenophase}
+    }
+    print(paste0("Finished processing phenocam ", phenocam))
+}
+
+for(i in filtered_dfs){
+    phenocam <- substr(i, 109, 110)
+    year <- YEAR
+    temp_df <- read.csv(i) %>% 
+        filter(!doy %in% snow_on_doys)
+    temp_zoo <- read.zoo(temp_df, index.column = "date", tz = "America/Denver")
+    explored <- greenExplore(temp_zoo$max.filtered)
+    plotExplore(explored)
+    figure_name <- paste0("plotExplore4_", phenocam, "_", year, ".png")
+    output_folder <- "/Volumes/SeagateBackupPlusDriveELWOOD/nwt_research/nwt_sennet_phenocams/phenopix_output/curve-and-phenophase-fits/"
+    png(filename = paste0(output_folder, figure_name),
+        width = 2000, height = 2400,
+        units = "px",
+        pointsize = 48,
+        bg = "white")
+    plotExplore(explored)
+    # dev.copy(jpg, paste0("/phenopix_output/curve-and-phenophase-fits/", figure_name))
+    dev.off()
+}
+
+# Save combined file
+    write.csv(phenophase_df, 
+              file = paste0("phenopix_output/phenophase_nosnow.csv"),
+              row.names = FALSE)
+
+```
+

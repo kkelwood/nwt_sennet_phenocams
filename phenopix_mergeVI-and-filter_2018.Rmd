@@ -1,0 +1,1708 @@
+---
+title: "Merge VIs and Filter"
+author: "Kelsey Elwood"
+date: "1/14/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r libraries}
+library(phenopix) # for image and greenness processing
+```
+
+```{r}
+subset_image_top_directory <- "/Volumes/SeagateBackupPlusDriveELWOOD/nwt_research/nwt_sennet_phenocams/camera_imagery_2018/subset9to1/" # Not specific to any camera
+```
+
+
+```{r set-camera-number}
+# IMPORTANT: Set camera number
+camera_number <- "11"
+
+# Create list of all VIs 
+All_VIs <- list.files(path = paste0(subset_image_top_directory, camera_number),
+           pattern = "VI.data.Rdata",
+           recursive = TRUE,
+           full.names = TRUE)
+
+# Integers representing the number of VIs, excluding #1
+FOV_number <- 2:length(All_VIs)
+
+# Load VI #1 (first from list)
+assign(paste0("VI_", "1"), get(load(All_VIs[1])))
+
+# Convert from .Rdata to dataframe
+VI_df <- as.data.frame(VI_1)
+
+# Get rid of ROI name in column names
+names(VI_df) <- gsub(pattern = paste0("roi_", camera_number, ".1."), replacement = "", names(VI_df))
+
+# Loop through VI 2 through (...) and merge with the dataframe from the previous ROI
+for(i in FOV_number){
+    temp <- get(load(All_VIs[i])) # load next VI
+    temp_df <- as.data.frame(temp) # convert to dataframe
+    names(temp_df) <- gsub(pattern = paste0("roi_", camera_number, ".", i, "."), replacement = "", names(temp_df)) # update column names
+    VI_df <<- rbind(VI_df, temp_df) # append to existing dataframe
+}
+
+# Write CSV to folder
+write.csv(VI_df, 
+          paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number, "/VI_", camera_number, ".csv"))
+
+# Filter based on digital number
+filtered_data <- autoFilter(data = unique(VI_df), 
+                            dn=c('ri.av', 'gi.av', 'bi.av'), 
+                            brt = 'bri.av', 
+                            filter = c("night", "spline", "max"), 
+                            na.fill = TRUE)
+
+# Create plot of all fitting and phenophase methods
+explored <- greenExplore(filtered_data$max.filtered)
+plotExplore(explored)
+
+# Save plot to folder
+jpeg(paste0("plotExplore", camera_number, '.jpg'),
+     width = 2000,
+     height = 2000,
+     pointsize = 40)
+plotExplore(explored)
+dev.off()
+
+
+# Calculate uncertainty for klosterman fit and klosterman threshold
+fit_complete <- greenProcess(ts = filtered_data$max.filtered, 
+                             fit = 'klosterman', 
+                             threshold= 'klosterman', 
+                             plot = FALSE, 
+                             uncert = TRUE, 
+                             nrep = 100)
+
+# Dataframe of phenophase date outputs with envelopes
+phenophase_new <- fit_complete$metrics
+
+# Add columns to phenophase dataframe
+phenophase_new$phenocam <- camera_number
+phenophase_new$fit <- "klosterman"
+phenophase_new$threshold = "klosterman"
+
+# Change row names to an official column
+phenophase_new$uncertainty_envelope <- rownames(phenophase_new)
+rownames(phenophase_new) <- c()
+
+# Save combined file
+write.csv(phenophase_new, 
+          file = paste0(subset_image_camera_dir, "/output_files/", "phenophase_dates_", camera_number, '.csv'),
+          row.names = FALSE)
+
+# Clean up environment
+rm(phenophase_new)
+rm(fit_complete)
+rm(explored)
+rm(VI_df)
+
+```
+
+
+## Phenocam 07
+
+```{r set-camera-number}
+# IMPORTANT: Set camera number
+camera_number <- "07"
+```
+
+```{r setwd}
+# Set working directory
+setwd(paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number))
+
+```
+
+```{r merge-VIs}
+# Create list of all VIs
+All_VIs <- list.files(path = paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number),
+           pattern = "VI.data.Rdata",
+           recursive = TRUE,
+           full.names = TRUE)
+
+# Integers representing the number of VIs, excluding #1
+FOV_number <- 2:length(All_VIs)
+
+# Load VI #1 (first from list)
+assign(paste0("VI_", "1"), get(load(All_VIs[1])))
+
+# Convert from .Rdata to dataframe
+VI_df <- as.data.frame(VI_1)
+
+# Get rid of ROI name in column names
+names(VI_df) <- gsub(pattern = paste0("roi_", camera_number, ".1."), replacement = "", names(VI_df))
+
+# Loop through VI 2 through (...) and merge with the dataframe from the previous ROI
+for(i in FOV_number){
+    temp <- get(load(All_VIs[i])) # load next VI
+    temp_df <- as.data.frame(temp) # convert to dataframe
+    names(temp_df) <- gsub(pattern = paste0("roi_", camera_number, ".", i, "."), replacement = "", names(temp_df)) # update column names
+    VI_df <<- rbind(VI_df, temp_df) # append to existing dataframe
+}
+
+# Write CSV to folder
+write.csv(VI_df, 
+          paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number, "/VI_", camera_number, ".csv"))
+```
+
+```{r filter-VIs}
+# Filter based on digital number
+filtered_data <- autoFilter(data = unique(VI_df), 
+                            dn=c('ri.av', 'gi.av', 'bi.av'), 
+                            brt = 'bri.av', 
+                            filter = c("night", "spline", "max"), 
+                            na.fill = TRUE)
+```
+
+```{r plotExplore}
+# Create plot of all fitting and phenophase methods
+explored <- greenExplore(filtered_data$max.filtered)
+plotExplore(explored)
+
+# Save plot to folder
+jpeg(paste0("plotExplore", camera_number, '.jpg'),
+     width = 2000,
+     height = 2000,
+     pointsize = 40)
+plotExplore(explored)
+dev.off()
+
+```
+
+```{r extract-phenophases}
+# Calculate uncertainty for klosterman fit and klosterman threshold
+fit_complete <- greenProcess(ts = filtered_data$max.filtered, 
+                             fit = 'klosterman', 
+                             threshold= 'klosterman', 
+                             plot = FALSE, 
+                             uncert = TRUE, 
+                             nrep = 100)
+```
+
+```{r append-phenophase-dates-to-csv}
+# Dataframe of phenophase date outputs with envelopes
+phenophase_new <- fit_complete$metrics
+
+# Add columns to phenophase dataframe
+phenophase_new$phenocam <- camera_number
+phenophase_new$fit <- "klosterman"
+phenophase_new$threshold = "klosterman"
+
+# Change row names to an official column
+phenophase_new$uncertainty_envelope <- rownames(phenophase_new)
+rownames(phenophase_new) <- c()
+
+# Load in existing phenophase csv file
+phenophase_df <- read.csv(file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv")
+
+# Add new phenophase dates to old csv file
+phenophase_df_appended <- rbind(phenophase_df, phenophase_new)
+
+# Save combined file
+write.csv(phenophase_df_appended, 
+          file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv",
+          row.names = FALSE)
+```
+
+
+## Phenocam 08
+
+```{r DEFINE!!!_variables}
+camera_number <- "08"
+```
+
+```{r}
+setwd(paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number))
+
+```
+
+```{r}
+All_VIs <- list.files(path = paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number),
+           pattern = "VI.data.Rdata",
+           recursive = TRUE,
+           full.names = TRUE)
+FOV_number <- 2:length(All_VIs)
+
+assign(paste0("VI_", "1"), get(load(All_VIs[1])))
+VI_df <- as.data.frame(VI_1)
+
+# For phenocam 8, the ROI is called "plot"
+names(VI_df) <- gsub(pattern = "plot.", replacement = "", names(VI_df))
+# names(VI_df) <- gsub(pattern = paste0("roi_", camera_number, ".1."), replacement = "", names(VI_df))
+
+if(length(All_VIs)>= 2){
+for(i in FOV_number){
+    temp <- get(load(All_VIs[i]))
+    temp_df <- as.data.frame(temp)
+    names(temp_df) <- gsub(pattern = paste0("roi_", camera_number, ".", i, "."), replacement = "", names(temp_df))
+    VI_df <<- rbind(VI_df, temp_df)
+}
+}
+write.csv(VI_df, 
+          paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number, "/VI_", camera_number, ".csv"))
+```
+
+```{r}
+filtered_data <- autoFilter(data = unique(VI_df), 
+                            dn=c('ri.av', 'gi.av', 'bi.av'), 
+                            brt = 'bri.av', 
+                            filter = c("night", "spline", "max"), 
+                            na.fill = TRUE)
+```
+
+```{r}
+explored <- greenExplore(filtered_data$max.filtered)
+plotExplore(explored)
+
+jpeg(paste0("plotExplore", camera_number, '.jpg'),
+     width = 2000,
+     height = 2000,
+     pointsize = 40)
+plotExplore(explored)
+dev.off()
+
+```
+
+```{r}
+fit_complete <- greenProcess(ts = filtered_data$max.filtered, 
+                             fit = 'klosterman', 
+                             threshold= 'klosterman', 
+                             plot = FALSE, 
+                             uncert = TRUE, 
+                             nrep = 100)
+```
+
+```{r}
+class(fit_complete)
+phenophase_new <- fit_complete$metrics
+phenophase_new$phenocam <- camera_number
+phenophase_new$fit <- "klosterman"
+phenophase_new$threshold = "klosterman"
+
+phenophase_new$uncertainty_envelope <- rownames(phenophase_new) 
+rownames(phenophase_new) <- c()
+phenophase_new
+
+# write.csv(phenophase_new, 
+          # file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv",
+          # row.names = FALSE)
+
+phenophase_df <- read.csv(file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv")
+
+phenophase_df_appended <- rbind(phenophase_df, phenophase_new)
+
+write.csv(phenophase_df_appended, 
+          file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv",
+          row.names = FALSE)
+```
+
+
+## Phenocam 09
+
+```{r set-camera-number}
+# IMPORTANT: Set camera number
+camera_number <- "09"
+```
+
+```{r setwd}
+# Set working directory
+setwd(paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number))
+
+```
+
+```{r merge-VIs}
+# Create list of all VIs
+All_VIs <- list.files(path = paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number),
+           pattern = "VI.data.Rdata",
+           recursive = TRUE,
+           full.names = TRUE)
+
+# Integers representing the number of VIs, excluding #1
+FOV_number <- 2:length(All_VIs)
+
+# Load VI #1 (first from list)
+assign(paste0("VI_", "1"), get(load(All_VIs[1])))
+
+# Convert from .Rdata to dataframe
+VI_df <- as.data.frame(VI_1)
+
+# Get rid of ROI name in column names
+names(VI_df) <- gsub(pattern = paste0("roi_", camera_number, ".1."), replacement = "", names(VI_df))
+
+# Loop through VI 2 through (...) and merge with the dataframe from the previous ROI
+for(i in FOV_number){
+    temp <- get(load(All_VIs[i])) # load next VI
+    temp_df <- as.data.frame(temp) # convert to dataframe
+    names(temp_df) <- gsub(pattern = paste0("roi_", camera_number, ".", i, "."), replacement = "", names(temp_df)) # update column names
+    VI_df <<- rbind(VI_df, temp_df) # append to existing dataframe
+}
+
+# Write CSV to folder
+write.csv(VI_df, 
+          paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number, "/VI_", camera_number, ".csv"))
+```
+
+```{r filter-VIs}
+# Filter based on digital number
+filtered_data <- autoFilter(data = unique(VI_df), 
+                            dn=c('ri.av', 'gi.av', 'bi.av'), 
+                            brt = 'bri.av', 
+                            filter = c("night", "spline", "max"), 
+                            na.fill = TRUE)
+```
+
+```{r plotExplore}
+# Create plot of all fitting and phenophase methods
+explored <- greenExplore(filtered_data$max.filtered)
+plotExplore(explored)
+
+# Save plot to folder
+jpeg(paste0("plotExplore", camera_number, '.jpg'),
+     width = 2000,
+     height = 2000,
+     pointsize = 40)
+plotExplore(explored)
+dev.off()
+
+```
+
+```{r extract-phenophases}
+# Calculate uncertainty for klosterman fit and klosterman threshold
+fit_complete <- greenProcess(ts = filtered_data$max.filtered, 
+                             fit = 'klosterman', 
+                             threshold= 'klosterman', 
+                             plot = FALSE, 
+                             uncert = TRUE, 
+                             nrep = 100)
+```
+
+```{r append-phenophase-dates-to-csv}
+# Dataframe of phenophase date outputs with envelopes
+phenophase_new <- fit_complete$metrics
+
+# Add columns to phenophase dataframe
+phenophase_new$phenocam <- camera_number
+phenophase_new$fit <- "klosterman"
+phenophase_new$threshold = "klosterman"
+
+# Change row names to an official column
+phenophase_new$uncertainty_envelope <- rownames(phenophase_new)
+rownames(phenophase_new) <- c()
+
+# Load in existing phenophase csv file
+phenophase_df <- read.csv(file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv")
+
+# Add new phenophase dates to old csv file
+phenophase_df_appended <- rbind(phenophase_df, phenophase_new)
+
+# Save combined file
+write.csv(phenophase_df_appended, 
+          file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv",
+          row.names = FALSE)
+```
+
+## Phenocam 10
+
+```{r set-camera-number}
+# IMPORTANT: Set camera number
+camera_number <- "10"
+```
+
+```{r setwd}
+# Set working directory
+setwd(paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number))
+
+```
+
+```{r merge-VIs}
+# Create list of all VIs
+All_VIs <- list.files(path = paste0(subset_image_camera_dir),
+           pattern = "VI.data.Rdata",
+           recursive = TRUE,
+           full.names = TRUE)
+
+# Integers representing the number of VIs, excluding #1
+FOV_number <- 2:length(All_VIs)
+
+# Load VI #1 (first from list)
+assign(paste0("VI_", "1"), get(load(All_VIs[1])))
+
+# Convert from .Rdata to dataframe
+VI_df <- as.data.frame(VI_1)
+
+# Get rid of ROI name in column names
+names(VI_df) <- gsub(pattern = paste0("roi_", camera_number, ".1."), replacement = "", names(VI_df))
+
+# Loop through VI 2 through (...) and merge with the dataframe from the previous ROI
+for(i in FOV_number){
+    temp <- get(load(All_VIs[i])) # load next VI
+    temp_df <- as.data.frame(temp) # convert to dataframe
+    names(temp_df) <- gsub(pattern = paste0("roi_", camera_number, ".", i, "."), replacement = "", names(temp_df)) # update column names
+    VI_df <<- rbind(VI_df, temp_df) # append to existing dataframe
+}
+
+# Write CSV to folder
+write.csv(VI_df, 
+          paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number, "/VI_", camera_number, ".csv"))
+```
+
+```{r filter-VIs}
+# Filter based on digital number
+filtered_data <- autoFilter(data = unique(VI_df), 
+                            dn=c('ri.av', 'gi.av', 'bi.av'), 
+                            brt = 'bri.av', 
+                            filter = c("night", "spline", "max"), 
+                            na.fill = TRUE)
+```
+
+```{r plotExplore}
+# Create plot of all fitting and phenophase methods
+explored <- greenExplore(filtered_data$max.filtered)
+plotExplore(explored)
+
+# Save plot to folder
+jpeg(paste0("plotExplore", camera_number, '.jpg'),
+     width = 2000,
+     height = 2000,
+     pointsize = 40)
+plotExplore(explored)
+dev.off()
+
+```
+
+```{r extract-phenophases}
+# Calculate uncertainty for klosterman fit and klosterman threshold
+fit_complete <- greenProcess(ts = filtered_data$max.filtered, 
+                             fit = 'klosterman', 
+                             threshold= 'klosterman', 
+                             plot = FALSE, 
+                             uncert = TRUE, 
+                             nrep = 100)
+```
+
+```{r append-phenophase-dates-to-csv}
+# Dataframe of phenophase date outputs with envelopes
+phenophase_new <- fit_complete$metrics
+
+# Add columns to phenophase dataframe
+phenophase_new$phenocam <- camera_number
+phenophase_new$fit <- "klosterman"
+phenophase_new$threshold = "klosterman"
+
+# Change row names to an official column
+phenophase_new$uncertainty_envelope <- rownames(phenophase_new)
+rownames(phenophase_new) <- c()
+
+# Load in existing phenophase csv file
+phenophase_df <- read.csv(file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv")
+
+# Add new phenophase dates to old csv file
+phenophase_df_appended <- rbind(phenophase_df, phenophase_new)
+
+# Save combined file
+write.csv(phenophase_df_appended, 
+          file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv",
+          row.names = FALSE)
+```
+
+
+## Phenocam 11
+
+```{r set-camera-number}
+# IMPORTANT: Set camera number
+camera_number <- "11"
+```
+
+```{r setwd}
+# Set working directory
+setwd(paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number))
+
+```
+
+```{r merge-VIs}
+# Create list of all VIs
+All_VIs <- list.files(path = paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number),
+           pattern = "VI.data.Rdata",
+           recursive = TRUE,
+           full.names = TRUE)
+
+# Integers representing the number of VIs, excluding #1
+FOV_number <- 2:length(All_VIs)
+
+# Load VI #1 (first from list)
+assign(paste0("VI_", "1"), get(load(All_VIs[1])))
+
+# Convert from .Rdata to dataframe
+VI_df <- as.data.frame(VI_1)
+
+# Get rid of ROI name in column names
+names(VI_df) <- gsub(pattern = paste0("roi_", camera_number, ".1."), replacement = "", names(VI_df))
+
+# Loop through VI 2 through (...) and merge with the dataframe from the previous ROI
+for(i in FOV_number){
+    temp <- get(load(All_VIs[i])) # load next VI
+    temp_df <- as.data.frame(temp) # convert to dataframe
+    names(temp_df) <- gsub(pattern = paste0("roi_", camera_number, ".", i, "."), replacement = "", names(temp_df)) # update column names
+    VI_df <<- rbind(VI_df, temp_df) # append to existing dataframe
+}
+
+# Write CSV to folder
+write.csv(VI_df, 
+          paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number, "/VI_", camera_number, ".csv"))
+```
+
+```{r filter-VIs}
+# Filter based on digital number
+filtered_data <- autoFilter(data = unique(VI_df), 
+                            dn=c('ri.av', 'gi.av', 'bi.av'), 
+                            brt = 'bri.av', 
+                            filter = c("night", "spline", "max"), 
+                            na.fill = TRUE)
+```
+
+```{r plotExplore}
+# Create plot of all fitting and phenophase methods
+explored <- greenExplore(filtered_data$max.filtered)
+plotExplore(explored)
+
+# Save plot to folder
+jpeg(paste0("plotExplore", camera_number, '.jpg'),
+     width = 2000,
+     height = 2000,
+     pointsize = 40)
+plotExplore(explored)
+dev.off()
+
+```
+
+```{r extract-phenophases}
+# Calculate uncertainty for klosterman fit and klosterman threshold
+fit_complete <- greenProcess(ts = filtered_data$max.filtered, 
+                             fit = 'klosterman', 
+                             threshold= 'klosterman', 
+                             plot = TRUE, 
+                             uncert = TRUE, 
+                             nrep = 100,
+                             which = "heavy")
+```
+
+```{r append-phenophase-dates-to-csv}
+# Dataframe of phenophase date outputs with envelopes
+phenophase_new <- fit_complete$metrics
+
+# Add columns to phenophase dataframe
+phenophase_new$phenocam <- camera_number
+phenophase_new$fit <- "klosterman"
+phenophase_new$threshold = "klosterman"
+
+# Change row names to an official column
+phenophase_new$uncertainty_envelope <- rownames(phenophase_new)
+rownames(phenophase_new) <- c()
+
+# Load in existing phenophase csv file
+phenophase_df <- read.csv(file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv")
+
+# Add new phenophase dates to old csv file
+phenophase_df_appended <- rbind(phenophase_df, phenophase_new)
+
+# Save combined file
+write.csv(phenophase_df_appended, 
+          file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv",
+          row.names = FALSE)
+```
+
+
+## Phenocam 12
+
+```{r set-camera-number}
+# IMPORTANT: Set camera number
+camera_number <- "12"
+```
+
+```{r setwd}
+# Set working directory
+setwd(paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number))
+
+# Set system time zone
+Sys.setenv(TZ = "US/Mountain")
+Sys.getenv("TZ")
+
+```
+
+```{r merge-VIs}
+# Create list of all VIs
+All_VIs <- list.files(path = paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number),
+           pattern = "VI.data.Rdata",
+           recursive = TRUE,
+           full.names = TRUE)
+
+# Integers representing the number of VIs, excluding #1
+FOV_number <- 2:length(All_VIs)
+
+# Load VI #1 (first from list)
+assign(paste0("VI_", "1"), get(load(All_VIs[1])))
+
+# Convert from .Rdata to dataframe
+VI_df <- as.data.frame(VI_1)
+
+# Get rid of ROI name in column names
+names(VI_df) <- gsub(pattern = paste0("roi_", camera_number, ".1."), replacement = "", names(VI_df))
+
+# Loop through VI 2 through (...) and merge with the dataframe from the previous ROI
+for(i in FOV_number){
+    temp <- get(load(All_VIs[i])) # load next VI
+    temp_df <- as.data.frame(temp) # convert to dataframe
+    names(temp_df) <- gsub(pattern = paste0("roi_", camera_number, ".", i, "."), replacement = "", names(temp_df)) # update column names
+    VI_df <<- rbind(VI_df, temp_df) # append to existing dataframe
+}
+
+# Write CSV to folder
+write.csv(VI_df, 
+          paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number, "/VI_", camera_number, ".csv"))
+```
+
+```{r filter-VIs}
+# Filter based on digital number
+filtered_data <- autoFilter(data = unique(VI_df), 
+                            dn=c('ri.av', 'gi.av', 'bi.av'), 
+                            brt = 'bri.av', 
+                            filter = c("night", "spline", "max"), 
+                            na.fill = TRUE)
+```
+
+```{r plotExplore}
+# Create plot of all fitting and phenophase methods
+explored <- greenExplore(filtered_data$max.filtered)
+plotExplore(explored)
+
+# Save plot to folder
+jpeg(paste0("plotExplore", camera_number, '.jpg'),
+     width = 2000,
+     height = 2000,
+     pointsize = 40)
+plotExplore(explored)
+dev.off()
+
+```
+
+```{r extract-phenophases}
+# Calculate uncertainty for klosterman fit and klosterman threshold
+fit_complete <- greenProcess(ts = filtered_data$max.filtered, 
+                             fit = 'klosterman', 
+                             threshold= 'klosterman', 
+                             plot = FALSE, 
+                             uncert = TRUE, 
+                             nrep = 100)
+```
+
+```{r append-phenophase-dates-to-csv}
+# Dataframe of phenophase date outputs with envelopes
+phenophase_new <- fit_complete$metrics
+
+# Add columns to phenophase dataframe
+phenophase_new$phenocam <- camera_number
+phenophase_new$fit <- "klosterman"
+phenophase_new$threshold = "klosterman"
+
+# Change row names to an official column
+phenophase_new$uncertainty_envelope <- rownames(phenophase_new)
+rownames(phenophase_new) <- c()
+
+# Load in existing phenophase csv file
+phenophase_df <- read.csv(file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv")
+
+# Add new phenophase dates to old csv file
+phenophase_df_appended <- rbind(phenophase_df, phenophase_new)
+
+# Save combined file
+write.csv(phenophase_df_appended, 
+          file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv",
+          row.names = FALSE)
+```
+
+
+# Phenocam 13
+
+```{r set-camera-number}
+# IMPORTANT: Set camera number
+camera_number <- "13"
+```
+
+```{r setwd}
+# Set working directory
+setwd(paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number))
+
+# Set system time zone
+Sys.setenv(TZ = "US/Mountain")
+Sys.getenv("TZ")
+
+```
+
+```{r merge-VIs}
+# Create list of all VIs
+All_VIs <- list.files(path = paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number),
+           pattern = "VI.data.Rdata",
+           recursive = TRUE,
+           full.names = TRUE)
+
+# Integers representing the number of VIs, excluding #1
+FOV_number <- 2:length(All_VIs)
+
+# Load VI #1 (first from list)
+assign(paste0("VI_", "1"), get(load(All_VIs[1])))
+
+# Convert from .Rdata to dataframe
+VI_df <- as.data.frame(VI_1)
+
+# Get rid of ROI name in column names
+names(VI_df) <- gsub(pattern = paste0("roi_", camera_number, ".1."), replacement = "", names(VI_df))
+
+# Loop through VI 2 through (...) and merge with the dataframe from the previous ROI
+for(i in FOV_number){
+    temp <- get(load(All_VIs[i])) # load next VI
+    temp_df <- as.data.frame(temp) # convert to dataframe
+    names(temp_df) <- gsub(pattern = paste0("roi_", camera_number, ".", i, "."), replacement = "", names(temp_df)) # update column names
+    VI_df <<- rbind(VI_df, temp_df) # append to existing dataframe
+}
+
+# Write CSV to folder
+write.csv(VI_df, 
+          paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number, "/VI_", camera_number, ".csv"))
+```
+
+```{r filter-VIs}
+# Filter based on digital number
+filtered_data <- autoFilter(data = unique(VI_df), 
+                            dn=c('ri.av', 'gi.av', 'bi.av'), 
+                            brt = 'bri.av', 
+                            filter = c("night", "spline", "max"), 
+                            na.fill = TRUE)
+```
+
+```{r plotExplore}
+# Create plot of all fitting and phenophase methods
+explored <- greenExplore(filtered_data$max.filtered)
+plotExplore(explored)
+
+# Save plot to folder
+jpeg(paste0("plotExplore", camera_number, '.jpg'),
+     width = 2000,
+     height = 2000,
+     pointsize = 40)
+plotExplore(explored)
+dev.off()
+
+```
+
+```{r extract-phenophases}
+# Calculate uncertainty for klosterman fit and klosterman threshold
+fit_complete <- greenProcess(ts = filtered_data$max.filtered, 
+                             fit = 'klosterman', 
+                             threshold= 'klosterman', 
+                             plot = FALSE, 
+                             uncert = TRUE, 
+                             nrep = 100)
+```
+
+```{r append-phenophase-dates-to-csv}
+# Dataframe of phenophase date outputs with envelopes
+phenophase_new <- fit_complete$metrics
+
+# Add columns to phenophase dataframe
+phenophase_new$phenocam <- camera_number
+phenophase_new$fit <- "klosterman"
+phenophase_new$threshold = "klosterman"
+
+# Change row names to an official column
+phenophase_new$uncertainty_envelope <- rownames(phenophase_new)
+rownames(phenophase_new) <- c()
+
+# Load in existing phenophase csv file
+phenophase_df <- read.csv(file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv")
+
+# Add new phenophase dates to old csv file
+phenophase_df_appended <- rbind(phenophase_df, phenophase_new)
+
+# Save combined file
+write.csv(phenophase_df_appended, 
+          file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv",
+          row.names = FALSE)
+```
+
+
+# Phenocam 14
+
+```{r set-camera-number}
+# IMPORTANT: Set camera number
+camera_number <- "14"
+```
+
+```{r setwd}
+# Set working directory
+setwd(paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number))
+
+# Set system time zone
+Sys.setenv(TZ = "US/Mountain")
+Sys.getenv("TZ")
+
+```
+
+```{r merge-VIs}
+# Create list of all VIs
+All_VIs <- list.files(path = paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number),
+           pattern = "VI.data.Rdata",
+           recursive = TRUE,
+           full.names = TRUE)
+
+# Integers representing the number of VIs, excluding #1
+FOV_number <- 2:length(All_VIs)
+
+# Load VI #1 (first from list)
+assign(paste0("VI_", "1"), get(load(All_VIs[1])))
+
+# Convert from .Rdata to dataframe
+VI_df <- as.data.frame(VI_1)
+
+# Get rid of ROI name in column names
+names(VI_df) <- gsub(pattern = paste0("roi_", camera_number, ".1."), replacement = "", names(VI_df))
+
+# Loop through VI 2 through (...) and merge with the dataframe from the previous ROI
+for(i in FOV_number){
+    temp <- get(load(All_VIs[i])) # load next VI
+    temp_df <- as.data.frame(temp) # convert to dataframe
+    names(temp_df) <- gsub(pattern = paste0("roi_", camera_number, ".", i, "."), replacement = "", names(temp_df)) # update column names
+    VI_df <<- rbind(VI_df, temp_df) # append to existing dataframe
+}
+
+# Write CSV to folder
+write.csv(VI_df, 
+          paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number, "/VI_", camera_number, ".csv"))
+```
+
+```{r filter-VIs}
+# Filter based on digital number
+filtered_data <- autoFilter(data = unique(VI_df), 
+                            dn=c('ri.av', 'gi.av', 'bi.av'), 
+                            brt = 'bri.av', 
+                            filter = c("night", "spline", "max"), 
+                            na.fill = TRUE)
+```
+
+```{r plotExplore}
+# Create plot of all fitting and phenophase methods
+explored <- greenExplore(filtered_data$max.filtered)
+plotExplore(explored)
+
+# Save plot to folder
+jpeg(paste0("plotExplore", camera_number, '.jpg'),
+     width = 2000,
+     height = 2000,
+     pointsize = 40)
+plotExplore(explored)
+dev.off()
+
+```
+
+```{r extract-phenophases}
+# Calculate uncertainty for klosterman fit and klosterman threshold
+fit_complete <- greenProcess(ts = filtered_data$max.filtered, 
+                             fit = 'klosterman', 
+                             threshold= 'klosterman', 
+                             plot = FALSE, 
+                             uncert = TRUE, 
+                             nrep = 100)
+```
+
+```{r append-phenophase-dates-to-csv}
+# Dataframe of phenophase date outputs with envelopes
+phenophase_new <- fit_complete$metrics
+
+# Add columns to phenophase dataframe
+phenophase_new$phenocam <- camera_number
+phenophase_new$fit <- "klosterman"
+phenophase_new$threshold = "klosterman"
+
+# Change row names to an official column
+phenophase_new$uncertainty_envelope <- rownames(phenophase_new)
+rownames(phenophase_new) <- c()
+
+# Load in existing phenophase csv file
+phenophase_df <- read.csv(file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv")
+
+# Add new phenophase dates to old csv file
+phenophase_df_appended <- rbind(phenophase_df, phenophase_new)
+
+# Save combined file
+write.csv(phenophase_df_appended, 
+          file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv",
+          row.names = FALSE)
+```
+
+
+
+## Phenocam 15
+
+```{r set-camera-number}
+# IMPORTANT: Set camera number
+camera_number <- "15"
+```
+
+```{r setwd}
+# Set working directory
+setwd(paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number))
+
+# Set system time zone
+Sys.setenv(TZ = "US/Mountain")
+Sys.getenv("TZ")
+
+```
+
+```{r merge-VIs}
+# Create list of all VIs
+All_VIs <- list.files(path = paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number),
+           pattern = "VI.data.Rdata",
+           recursive = TRUE,
+           full.names = TRUE)
+
+# Integers representing the number of VIs, excluding #1
+FOV_number <- 2:length(All_VIs)
+
+# Load VI #1 (first from list)
+assign(paste0("VI_", "1"), get(load(All_VIs[1])))
+
+# Convert from .Rdata to dataframe
+VI_df <- as.data.frame(VI_1)
+
+# Get rid of ROI name in column names
+names(VI_df) <- gsub(pattern = paste0("roi_", camera_number, ".1."), replacement = "", names(VI_df))
+
+# Loop through VI 2 through (...) and merge with the dataframe from the previous ROI
+for(i in FOV_number){
+    temp <- get(load(All_VIs[i])) # load next VI
+    temp_df <- as.data.frame(temp) # convert to dataframe
+    names(temp_df) <- gsub(pattern = paste0("roi_", camera_number, ".", i, "."), replacement = "", names(temp_df)) # update column names
+    VI_df <<- rbind(VI_df, temp_df) # append to existing dataframe
+}
+
+# Write CSV to folder
+write.csv(VI_df, 
+          paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number, "/VI_", camera_number, ".csv"))
+```
+
+```{r filter-VIs}
+# Filter based on digital number
+filtered_data <- autoFilter(data = unique(VI_df), 
+                            dn=c('ri.av', 'gi.av', 'bi.av'), 
+                            brt = 'bri.av', 
+                            filter = c("night", "spline", "max"), 
+                            na.fill = TRUE)
+```
+
+```{r plotExplore}
+# Create plot of all fitting and phenophase methods
+explored <- greenExplore(filtered_data$max.filtered)
+plotExplore(explored)
+
+# Save plot to folder
+jpeg(paste0("plotExplore", camera_number, '.jpg'),
+     width = 2000,
+     height = 2000,
+     pointsize = 40)
+plotExplore(explored)
+dev.off()
+
+```
+
+```{r extract-phenophases}
+# Calculate uncertainty for klosterman fit and klosterman threshold
+fit_complete <- greenProcess(ts = filtered_data$max.filtered, 
+                             fit = 'klosterman', 
+                             threshold= 'klosterman', 
+                             plot = FALSE, 
+                             uncert = TRUE, 
+                             nrep = 100)
+```
+
+```{r append-phenophase-dates-to-csv}
+# Dataframe of phenophase date outputs with envelopes
+phenophase_new <- fit_complete$metrics
+
+# Add columns to phenophase dataframe
+phenophase_new$phenocam <- camera_number
+phenophase_new$fit <- "klosterman"
+phenophase_new$threshold = "klosterman"
+
+# Change row names to an official column
+phenophase_new$uncertainty_envelope <- rownames(phenophase_new)
+rownames(phenophase_new) <- c()
+
+# Load in existing phenophase csv file
+phenophase_df <- read.csv(file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv")
+
+# Add new phenophase dates to old csv file
+phenophase_df_appended <- rbind(phenophase_df, phenophase_new)
+
+# Save combined file
+write.csv(phenophase_df_appended, 
+          file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv",
+          row.names = FALSE)
+```
+
+## Phenocam 16
+
+```{r set-camera-number}
+# IMPORTANT: Set camera number
+camera_number <- "16"
+```
+
+```{r setwd}
+# Set working directory
+setwd(paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number))
+
+# Set system time zone
+Sys.setenv(TZ = "US/Mountain")
+Sys.getenv("TZ")
+
+```
+
+```{r merge-VIs}
+# Create list of all VIs
+All_VIs <- list.files(path = paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number),
+           pattern = "VI.data.Rdata",
+           recursive = TRUE,
+           full.names = TRUE)
+
+# Integers representing the number of VIs, excluding #1
+FOV_number <- 2:length(All_VIs)
+
+# Load VI #1 (first from list)
+assign(paste0("VI_", "1"), get(load(All_VIs[1])))
+
+# Convert from .Rdata to dataframe
+VI_df <- as.data.frame(VI_1)
+
+# Get rid of ROI name in column names
+names(VI_df) <- gsub(pattern = paste0("roi_", camera_number, ".1."), replacement = "", names(VI_df))
+
+# Loop through VI 2 through (...) and merge with the dataframe from the previous ROI
+for(i in FOV_number){
+    temp <- get(load(All_VIs[i])) # load next VI
+    temp_df <- as.data.frame(temp) # convert to dataframe
+    names(temp_df) <- gsub(pattern = paste0("roi_", camera_number, ".", i, "."), replacement = "", names(temp_df)) # update column names
+    VI_df <<- rbind(VI_df, temp_df) # append to existing dataframe
+}
+
+# Write CSV to folder
+write.csv(VI_df, 
+          paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number, "/VI_", camera_number, ".csv"))
+```
+
+```{r filter-VIs}
+# Filter based on digital number
+filtered_data <- autoFilter(data = unique(VI_df), 
+                            dn=c('ri.av', 'gi.av', 'bi.av'), 
+                            brt = 'bri.av', 
+                            filter = c("night", "spline", "max"), 
+                            na.fill = TRUE)
+```
+
+```{r plotExplore}
+# Create plot of all fitting and phenophase methods
+explored <- greenExplore(filtered_data$max.filtered)
+plotExplore(explored)
+
+# Save plot to folder
+jpeg(paste0("plotExplore", camera_number, '.jpg'),
+     width = 2000,
+     height = 2000,
+     pointsize = 40)
+plotExplore(explored)
+dev.off()
+
+```
+
+```{r extract-phenophases}
+# Calculate uncertainty for klosterman fit and klosterman threshold
+fit_complete <- greenProcess(ts = filtered_data$max.filtered, 
+                             fit = 'klosterman', 
+                             threshold= 'klosterman', 
+                             plot = FALSE, 
+                             uncert = TRUE, 
+                             nrep = 100)
+```
+
+```{r append-phenophase-dates-to-csv}
+# Dataframe of phenophase date outputs with envelopes
+phenophase_new <- fit_complete$metrics
+
+# Add columns to phenophase dataframe
+phenophase_new$phenocam <- camera_number
+phenophase_new$fit <- "klosterman"
+phenophase_new$threshold = "klosterman"
+
+# Change row names to an official column
+phenophase_new$uncertainty_envelope <- rownames(phenophase_new)
+rownames(phenophase_new) <- c()
+
+# Load in existing phenophase csv file
+phenophase_df <- read.csv(file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv")
+
+# Add new phenophase dates to old csv file
+phenophase_df_appended <- rbind(phenophase_df, phenophase_new)
+
+# Save combined file
+write.csv(phenophase_df_appended, 
+          file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv",
+          row.names = FALSE)
+```
+
+
+# Phenocam 17
+
+```{r set-camera-number}
+# IMPORTANT: Set camera number
+camera_number <- "17"
+```
+
+```{r setwd}
+# Set working directory
+setwd(paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number))
+
+# Set system time zone
+Sys.setenv(TZ = "US/Mountain")
+Sys.getenv("TZ")
+
+```
+
+```{r merge-VIs}
+# Create list of all VIs
+All_VIs <- list.files(path = paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number),
+           pattern = "VI.data.Rdata",
+           recursive = TRUE,
+           full.names = TRUE)
+
+# Integers representing the number of VIs, excluding #1
+FOV_number <- 2:length(All_VIs)
+
+# Load VI #1 (first from list)
+assign(paste0("VI_", "1"), get(load(All_VIs[1])))
+
+# Convert from .Rdata to dataframe
+VI_df <- as.data.frame(VI_1)
+
+# Get rid of ROI name in column names
+names(VI_df) <- gsub(pattern = paste0("roi_", camera_number, ".1."), replacement = "", names(VI_df))
+
+# Loop through VI 2 through (...) and merge with the dataframe from the previous ROI
+for(i in FOV_number){
+    temp <- get(load(All_VIs[i])) # load next VI
+    temp_df <- as.data.frame(temp) # convert to dataframe
+    names(temp_df) <- gsub(pattern = paste0("roi_", camera_number, ".", i, "."), replacement = "", names(temp_df)) # update column names
+    VI_df <<- rbind(VI_df, temp_df) # append to existing dataframe
+}
+
+# Write CSV to folder
+write.csv(VI_df, 
+          paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number, "/VI_", camera_number, ".csv"))
+```
+
+```{r filter-VIs}
+# Filter based on digital number
+filtered_data <- autoFilter(data = unique(VI_df), 
+                            dn=c('ri.av', 'gi.av', 'bi.av'), 
+                            brt = 'bri.av', 
+                            filter = c("night", "spline", "max"), 
+                            na.fill = TRUE)
+```
+
+```{r plotExplore}
+# Create plot of all fitting and phenophase methods
+explored <- greenExplore(filtered_data$max.filtered)
+plotExplore(explored)
+
+# Save plot to folder
+jpeg(paste0("plotExplore", camera_number, '.jpg'),
+     width = 2000,
+     height = 2000,
+     pointsize = 40)
+plotExplore(explored)
+dev.off()
+
+```
+
+```{r extract-phenophases}
+# Calculate uncertainty for klosterman fit and klosterman threshold
+fit_complete <- greenProcess(ts = filtered_data$max.filtered, 
+                             fit = 'klosterman', 
+                             threshold= 'klosterman', 
+                             plot = FALSE, 
+                             uncert = TRUE, 
+                             nrep = 100)
+```
+
+```{r append-phenophase-dates-to-csv}
+# Dataframe of phenophase date outputs with envelopes
+phenophase_new <- fit_complete$metrics
+
+# Add columns to phenophase dataframe
+phenophase_new$phenocam <- camera_number
+phenophase_new$fit <- "klosterman"
+phenophase_new$threshold = "klosterman"
+
+# Change row names to an official column
+phenophase_new$uncertainty_envelope <- rownames(phenophase_new)
+rownames(phenophase_new) <- c()
+
+# Load in existing phenophase csv file
+phenophase_df <- read.csv(file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv")
+
+# Add new phenophase dates to old csv file
+phenophase_df_appended <- rbind(phenophase_df, phenophase_new)
+
+# Save combined file
+write.csv(phenophase_df_appended, 
+          file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv",
+          row.names = FALSE)
+```
+
+
+## Phenocam 18
+
+```{r set-camera-number}
+# IMPORTANT: Set camera number
+camera_number <- "18"
+```
+
+```{r setwd}
+# Set working directory
+setwd(paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number))
+
+```
+
+```{r merge-VIs}
+# Create list of all VIs
+All_VIs <- list.files(path = paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number),
+           pattern = "VI.data.Rdata",
+           recursive = TRUE,
+           full.names = TRUE)
+
+# Integers representing the number of VIs, excluding #1
+FOV_number <- 2:length(All_VIs)
+
+# Load VI #1 (first from list)
+assign(paste0("VI_", "1"), get(load(All_VIs[1])))
+
+# Convert from .Rdata to dataframe
+VI_df <- as.data.frame(VI_1)
+
+# Get rid of ROI name in column names
+names(VI_df) <- gsub(pattern = paste0("roi_", camera_number, ".1."), replacement = "", names(VI_df))
+
+# Loop through VI 2 through (...) and merge with the dataframe from the previous ROI
+for(i in FOV_number){
+    temp <- get(load(All_VIs[i])) # load next VI
+    temp_df <- as.data.frame(temp) # convert to dataframe
+    names(temp_df) <- gsub(pattern = paste0("roi_", camera_number, ".", i, "."), replacement = "", names(temp_df)) # update column names
+    VI_df <<- rbind(VI_df, temp_df) # append to existing dataframe
+}
+
+# Write CSV to folder
+write.csv(VI_df, 
+          paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number, "/VI_", camera_number, ".csv"))
+```
+
+```{r filter-VIs}
+# Filter based on digital number
+filtered_data <- autoFilter(data = unique(VI_df), 
+                            dn=c('ri.av', 'gi.av', 'bi.av'), 
+                            brt = 'bri.av', 
+                            filter = c("night", "spline", "max"), 
+                            na.fill = TRUE)
+
+dataframed <- convert(filtered_data, year='2017')
+    new_filename <- paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", "/output/VI_filtered/filtered_", basename(i))
+    write.csv(dataframed,
+              file = new_filename)
+```
+
+```{r plotExplore}
+# Create plot of all fitting and phenophase methods
+explored <- greenExplore(filtered_data$max.filtered)
+plotExplore(explored)
+
+# Save plot to folder
+jpeg(paste0("plotExplore", camera_number, '.jpg'),
+     width = 2000,
+     height = 2000,
+     pointsize = 40)
+plotExplore(explored)
+dev.off()
+
+```
+
+```{r extract-phenophases}
+# Calculate uncertainty for klosterman fit and klosterman threshold
+fit_complete <- greenProcess(ts = filtered_data$max.filtered, 
+                             fit = 'klosterman', 
+                             threshold= 'klosterman', 
+                             plot = FALSE, 
+                             uncert = TRUE, 
+                             nrep = 100)
+```
+
+```{r append-phenophase-dates-to-csv}
+# Dataframe of phenophase date outputs with envelopes
+phenophase_new <- fit_complete$metrics
+
+# Add columns to phenophase dataframe
+phenophase_new$phenocam <- camera_number
+phenophase_new$fit <- "klosterman"
+phenophase_new$threshold = "klosterman"
+
+# Change row names to an official column
+phenophase_new$uncertainty_envelope <- rownames(phenophase_new)
+rownames(phenophase_new) <- c()
+
+# Load in existing phenophase csv file
+phenophase_df <- read.csv(file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv")
+
+# Add new phenophase dates to old csv file
+phenophase_df_appended <- rbind(phenophase_df, phenophase_new)
+
+# Save combined file
+write.csv(phenophase_df_appended, 
+          file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv",
+          row.names = FALSE)
+```
+
+## Phenocam 19
+
+```{r set-camera-number}
+# IMPORTANT: Set camera number
+camera_number <- "19"
+```
+
+```{r setwd}
+# Set working directory
+setwd(paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number))
+
+# Set system time zone
+Sys.setenv(TZ = "US/Mountain")
+Sys.getenv("TZ")
+
+```
+
+```{r merge-VIs}
+# Create list of all VIs
+All_VIs <- list.files(path = paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number),
+           pattern = "VI.data.Rdata",
+           recursive = TRUE,
+           full.names = TRUE)
+
+# Integers representing the number of VIs, excluding #1
+FOV_number <- 2:length(All_VIs)
+
+# Load VI #1 (first from list)
+assign(paste0("VI_", "1"), get(load(All_VIs[1])))
+
+# Convert from .Rdata to dataframe
+VI_df <- as.data.frame(VI_1)
+
+# Get rid of ROI name in column names
+names(VI_df) <- gsub(pattern = paste0("roi_", camera_number, ".1."), replacement = "", names(VI_df))
+
+# Loop through VI 2 through (...) and merge with the dataframe from the previous ROI
+for(i in FOV_number){
+    temp <- get(load(All_VIs[i])) # load next VI
+    temp_df <- as.data.frame(temp) # convert to dataframe
+    names(temp_df) <- gsub(pattern = paste0("roi_", camera_number, ".", i, "."), replacement = "", names(temp_df)) # update column names
+    VI_df <<- rbind(VI_df, temp_df) # append to existing dataframe
+}
+
+# Write CSV to folder
+write.csv(VI_df, 
+          paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number, "/VI_", camera_number, ".csv"))
+```
+
+```{r filter-VIs}
+# Filter based on digital number
+filtered_data <- autoFilter(data = unique(VI_df), 
+                            dn=c('ri.av', 'gi.av', 'bi.av'), 
+                            brt = 'bri.av', 
+                            filter = c("night", "spline", "max"), 
+                            na.fill = TRUE)
+```
+
+```{r plotExplore}
+# Create plot of all fitting and phenophase methods
+explored <- greenExplore(filtered_data$max.filtered)
+plotExplore(explored)
+
+# Save plot to folder
+jpeg(paste0("plotExplore", camera_number, '.jpg'),
+     width = 2000,
+     height = 2000,
+     pointsize = 40)
+plotExplore(explored)
+dev.off()
+
+```
+
+```{r extract-phenophases}
+# Calculate uncertainty for klosterman fit and klosterman threshold
+fit_complete <- greenProcess(ts = filtered_data$max.filtered, 
+                             fit = 'klosterman', 
+                             threshold= 'klosterman', 
+                             plot = FALSE, 
+                             uncert = TRUE, 
+                             nrep = 100)
+```
+
+```{r append-phenophase-dates-to-csv}
+# Dataframe of phenophase date outputs with envelopes
+phenophase_new <- fit_complete$metrics
+
+# Add columns to phenophase dataframe
+phenophase_new$phenocam <- camera_number
+phenophase_new$fit <- "klosterman"
+phenophase_new$threshold = "klosterman"
+
+# Change row names to an official column
+phenophase_new$uncertainty_envelope <- rownames(phenophase_new)
+rownames(phenophase_new) <- c()
+
+# Load in existing phenophase csv file
+phenophase_df <- read.csv(file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv")
+
+# Add new phenophase dates to old csv file
+phenophase_df_appended <- rbind(phenophase_df, phenophase_new)
+
+# Save combined file
+write.csv(phenophase_df_appended, 
+          file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv",
+          row.names = FALSE)
+```
+
+## Phenocam 20
+```{r set-camera-number}
+# IMPORTANT: Set camera number
+camera_number <- "20"
+```
+
+```{r setwd}
+# Set working directory
+setwd(paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number))
+
+# Set system time zone
+Sys.setenv(TZ = "US/Mountain")
+Sys.getenv("TZ")
+
+```
+
+```{r merge-VIs}
+# Create list of all VIs
+All_VIs <- list.files(path = paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number),
+           pattern = "VI.data.Rdata",
+           recursive = TRUE,
+           full.names = TRUE)
+
+# Integers representing the number of VIs, excluding #1
+FOV_number <- 2:length(All_VIs)
+
+# Load VI #1 (first from list)
+assign(paste0("VI_", "1"), get(load(All_VIs[1])))
+
+# Convert from .Rdata to dataframe
+VI_df <- as.data.frame(VI_1)
+
+# Get rid of ROI name in column names
+names(VI_df) <- gsub(pattern = paste0("roi_", camera_number, ".1."), replacement = "", names(VI_df))
+
+# Loop through VI 2 through (...) and merge with the dataframe from the previous ROI
+for(i in FOV_number){
+    temp <- get(load(All_VIs[i])) # load next VI
+    temp_df <- as.data.frame(temp) # convert to dataframe
+    names(temp_df) <- gsub(pattern = paste0("roi_", camera_number, ".", i, "."), replacement = "", names(temp_df)) # update column names
+    VI_df <<- rbind(VI_df, temp_df) # append to existing dataframe
+}
+
+# Write CSV to folder
+write.csv(VI_df, 
+          paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number, "/VI_", camera_number, ".csv"))
+```
+
+```{r filter-VIs}
+# Filter based on digital number
+filtered_data <- autoFilter(data = unique(VI_df), 
+                            dn=c('ri.av', 'gi.av', 'bi.av'), 
+                            brt = 'bri.av', 
+                            filter = c("night", "spline", "max"), 
+                            na.fill = TRUE)
+```
+
+```{r plotExplore}
+# Create plot of all fitting and phenophase methods
+explored <- greenExplore(filtered_data$max.filtered)
+plotExplore(explored)
+
+# Save plot to folder
+jpeg(paste0("plotExplore", camera_number, '.jpg'),
+     width = 2000,
+     height = 2000,
+     pointsize = 40)
+plotExplore(explored)
+dev.off()
+
+```
+
+```{r extract-phenophases}
+# Calculate uncertainty for klosterman fit and klosterman threshold
+fit_complete <- greenProcess(ts = filtered_data$max.filtered, 
+                             fit = 'klosterman', 
+                             threshold= 'klosterman', 
+                             plot = FALSE, 
+                             uncert = TRUE, 
+                             nrep = 100)
+```
+
+```{r append-phenophase-dates-to-csv}
+# Dataframe of phenophase date outputs with envelopes
+phenophase_new <- fit_complete$metrics
+
+# Add columns to phenophase dataframe
+phenophase_new$phenocam <- camera_number
+phenophase_new$fit <- "klosterman"
+phenophase_new$threshold = "klosterman"
+
+# Change row names to an official column
+phenophase_new$uncertainty_envelope <- rownames(phenophase_new)
+rownames(phenophase_new) <- c()
+
+# Load in existing phenophase csv file
+phenophase_df <- read.csv(file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv")
+
+# Add new phenophase dates to old csv file
+phenophase_df_appended <- rbind(phenophase_df, phenophase_new)
+
+# Save combined file
+write.csv(phenophase_df_appended, 
+          file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv",
+          row.names = FALSE)
+```
+
+
+## Phenocam 21
+
+
+```{r set-camera-number}
+# IMPORTANT: Set camera number
+camera_number <- "21"
+```
+
+```{r setwd}
+# Set working directory
+setwd(paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number))
+
+# Set system time zone
+Sys.setenv(TZ = "US/Mountain")
+Sys.getenv("TZ")
+
+```
+
+```{r merge-VIs}
+# Create list of all VIs
+All_VIs <- list.files(path = paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number),
+           pattern = "VI.data.Rdata",
+           recursive = TRUE,
+           full.names = TRUE)
+
+# Integers representing the number of VIs, excluding #1
+FOV_number <- 2:length(All_VIs)
+
+# Load VI #1 (first from list)
+assign(paste0("VI_", "1"), get(load(All_VIs[1])))
+
+# Convert from .Rdata to dataframe
+VI_df <- as.data.frame(VI_1)
+
+# Get rid of ROI name in column names
+names(VI_df) <- gsub(pattern = paste0("roi_", camera_number, ".1."), replacement = "", names(VI_df))
+
+# Loop through VI 2 through (...) and merge with the dataframe from the previous ROI
+for(i in FOV_number){
+    temp <- get(load(All_VIs[i])) # load next VI
+    temp_df <- as.data.frame(temp) # convert to dataframe
+    names(temp_df) <- gsub(pattern = paste0("roi_", camera_number, ".", i, "."), replacement = "", names(temp_df)) # update column names
+    VI_df <<- rbind(VI_df, temp_df) # append to existing dataframe
+}
+
+# Write CSV to folder
+write.csv(VI_df, 
+          paste0("/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/", camera_number, "/VI_", camera_number, ".csv"))
+```
+
+```{r filter-VIs}
+# Filter based on digital number
+filtered_data <- autoFilter(data = unique(VI_df), 
+                            dn=c('ri.av', 'gi.av', 'bi.av'), 
+                            brt = 'bri.av', 
+                            filter = c("night", "spline", "max"), 
+                            na.fill = TRUE)
+```
+
+```{r plotExplore}
+# Create plot of all fitting and phenophase methods
+explored <- greenExplore(filtered_data$max.filtered)
+plotExplore(explored)
+
+# Save plot to folder
+jpeg(paste0("plotExplore", camera_number, '.jpg'),
+     width = 2000,
+     height = 2000,
+     pointsize = 40)
+plotExplore(explored)
+dev.off()
+
+```
+
+```{r extract-phenophases}
+# Calculate uncertainty for klosterman fit and klosterman threshold
+fit_complete <- greenProcess(ts = filtered_data$max.filtered, 
+                             fit = 'klosterman', 
+                             threshold= 'klosterman', 
+                             plot = FALSE, 
+                             uncert = TRUE, 
+                             nrep = 100)
+```
+
+```{r append-phenophase-dates-to-csv}
+# Dataframe of phenophase date outputs with envelopes
+phenophase_new <- fit_complete$metrics
+
+# Add columns to phenophase dataframe
+phenophase_new$phenocam <- camera_number
+phenophase_new$fit <- "klosterman"
+phenophase_new$threshold = "klosterman"
+
+# Change row names to an official column
+phenophase_new$uncertainty_envelope <- rownames(phenophase_new)
+rownames(phenophase_new) <- c()
+
+# Load in existing phenophase csv file
+phenophase_df <- read.csv(file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv")
+
+# Add new phenophase dates to old csv file
+phenophase_df_appended <- rbind(phenophase_df, phenophase_new)
+
+# Save combined file
+write.csv(phenophase_df_appended, 
+          file = "/Users/elwoodk/Google_Drive/ElwoodK_Research/Computation/Phenocams/phenopix/output/klosterman_dates.csv",
+          row.names = FALSE)
+```
